@@ -1,0 +1,769 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Records</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+
+        body {
+            background: #f0f4f8;
+            padding: 2rem;
+            display: flex;
+            justify-content: center;
+        }
+
+        .table-wrapper {
+            width: 100%;
+            max-width: 1500px;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+            padding: 1.5rem;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            color: #1e3a5f;
+            margin-bottom: 1rem;
+        }
+
+        /* View toggle buttons */
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 1.25rem;
+        }
+
+        .view-toggle button {
+            padding: 8px 20px;
+            border: 2px solid #d2e3f0;
+            background: #fff;
+            color: #1e4f6e;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            transition: all 0.2s;
+        }
+
+        .view-toggle button.active {
+            background: #1e6f9f;
+            color: #fff;
+            border-color: #1e6f9f;
+        }
+
+        .view-toggle button:hover:not(.active) {
+            background: #eef4fa;
+        }
+
+        .view-section { display: none; }
+        .view-section.active { display: block; }
+
+        /* ---------- TABLE VIEW ---------- */
+        .table-scroll { overflow-x: auto; }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1000px;
+        }
+
+        th, td {
+            padding: 12px 14px;
+            text-align: left;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 0.9rem;
+            color: #1e3a5f;
+            vertical-align: middle;
+        }
+
+        th {
+            background: #eef4fa;
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.5px;
+            color: #335d80;
+            white-space: nowrap;
+        }
+
+        tr:hover td { background: #f9fbfd; }
+
+        .img-cell img {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #e2e8f0;
+            display: block;
+            cursor: pointer;
+            transition: transform 0.2s;
+            background: #f7fafc;
+        }
+
+        .img-cell img:hover {
+            transform: scale(1.1);
+            border-color: #3a7ca5;
+        }
+
+        .trans-num {
+            font-family: monospace;
+            background: #ebf3fa;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #10537b;
+            border: 1px solid #d2e3f0;
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        .utr-num {
+            font-family: monospace;
+            background: #fdf3e7;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #8a5a1e;
+            border: 1px solid #f0dcb8;
+            display: inline-block;
+            white-space: nowrap;
+        }
+
+        /* Editable cells */
+        .editable {
+            background: #f4f9ff;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #1e4f6e;
+            border: 1px dashed #b8d3e8;
+            display: inline-block;
+            min-width: 120px;
+            max-width: 220px;
+            outline: none;
+            transition: all 0.2s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .editable:focus {
+            background: #fff;
+            border: 1px solid #3a7ca5;
+            box-shadow: 0 0 0 3px rgba(58,124,165,0.15);
+            white-space: normal;
+            max-width: 260px;
+        }
+
+        .editable.saved {
+            border-color: #4caf50;
+            background: #f1f8e9;
+        }
+
+        .edit-hint {
+            font-size: 0.7rem;
+            color: #8aa8c0;
+            margin-top: 10px;
+            text-align: right;
+            display: block;
+        }
+
+        /* ---------- FOLDER VIEW ---------- */
+        .folder-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .folder-item {
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            background: #fff;
+            transition: box-shadow 0.2s;
+        }
+
+        .folder-item:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+        }
+
+        .folder-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 14px 18px;
+            background: #eef4fa;
+            cursor: pointer;
+            user-select: none;
+            transition: background 0.2s;
+        }
+
+        .folder-header:hover {
+            background: #e2eef9;
+        }
+
+        .folder-icon {
+            font-size: 1.4rem;
+            color: #e0a800;
+            transition: transform 0.25s;
+        }
+
+        .folder-item.open .folder-icon {
+            transform: rotate(0deg);
+        }
+
+        .folder-title {
+            font-weight: 600;
+            color: #1e3a5f;
+            font-size: 1rem;
+            flex: 1;
+        }
+
+        .folder-meta {
+            font-size: 0.8rem;
+            color: #5d8aa8;
+            background: #fff;
+            padding: 4px 12px;
+            border-radius: 20px;
+            border: 1px solid #d2e3f0;
+        }
+
+        .folder-arrow {
+            font-size: 0.8rem;
+            color: #5d8aa8;
+            transition: transform 0.25s;
+        }
+
+        .folder-item.open .folder-arrow {
+            transform: rotate(180deg);
+        }
+
+        .folder-body {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.35s ease;
+            background: #fcfdff;
+        }
+
+        .folder-item.open .folder-body {
+            max-height: 1000px;
+        }
+
+        .folder-details {
+            padding: 18px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+        }
+
+        .detail-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .detail-label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #7a9ab0;
+            font-weight: 600;
+        }
+
+        .detail-value {
+            font-size: 0.9rem;
+            color: #1e3a5f;
+            font-weight: 500;
+        }
+
+        .detail-images {
+            display: flex;
+            gap: 16px;
+            grid-column: 1 / -1;
+            flex-wrap: wrap;
+        }
+
+        .detail-img-box {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .detail-img-box img {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 2px solid #e2e8f0;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .detail-img-box img:hover {
+            transform: scale(1.05);
+            border-color: #3a7ca5;
+        }
+
+        .detail-img-label {
+            font-size: 0.7rem;
+            color: #7a9ab0;
+            text-transform: uppercase;
+            text-align: center;
+        }
+
+        /* Inline editable in folder */
+        .folder-details .editable {
+            white-space: normal;
+            max-width: 100%;
+            min-width: 100px;
+        }
+
+        /* ---------- IMAGE MODAL (LIGHTBOX) ---------- */
+        .img-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            z-index: 9999;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            cursor: zoom-out;
+            backdrop-filter: blur(4px);
+        }
+
+        .img-modal.active {
+            display: flex;
+        }
+
+        .img-modal img {
+            max-width: 92vw;
+            max-height: 90vh;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.5);
+            border: 3px solid #fff;
+            object-fit: contain;
+            animation: pop 0.25s ease;
+        }
+
+        .img-modal .close-btn {
+            position: absolute;
+            top: 20px;
+            right: 28px;
+            font-size: 2.2rem;
+            color: #fff;
+            cursor: pointer;
+            line-height: 1;
+            background: rgba(0,0,0,0.4);
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .img-modal .close-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        @keyframes pop {
+            from { transform: scale(0.9); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 1rem; }
+            h1 { font-size: 1.2rem; }
+            th, td { padding: 10px; font-size: 0.8rem; }
+            .folder-details { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="table-wrapper">
+        <h1>Payment Records</h1>
+
+        <!-- View Toggle -->
+        <div class="view-toggle">
+            <button id="btnTable" class="active" onclick="switchView('table')">📋 Table View</button>
+            <button id="btnFolder" onclick="switchView('folder')">📁 Folder View</button>
+        </div>
+
+        <!-- ================= TABLE VIEW ================= -->
+        <div id="viewTable" class="view-section active">
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date of payment</th>
+                            <th>Transaction image</th>
+                            <th>Transaction number</th>
+                            <th>UTR ID</th>
+                            <th>Bill image</th>
+                            <th>Paid against</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- Rows JS se render honge -->
+                    </tbody>
+                </table>
+            </div>
+            <span class="edit-hint">
+                ✏️ Paid against editable hai — click karke edit karein, auto-save ho jayega. 
+                🔍 Image par click karke bada dekhein.
+            </span>
+        </div>
+
+        <!-- ================= FOLDER VIEW ================= -->
+        <div id="viewFolder" class="view-section">
+            <div class="folder-list" id="folderList">
+                <!-- Folder items JS se render honge -->
+            </div>
+            <span class="edit-hint">
+                ✏️ Folder kholne ke baad Paid against edit kar sakte hain. 
+                🔍 Image par click karke bada dekhein.
+            </span>
+        </div>
+    </div>
+
+    <!-- ================= IMAGE MODAL ================= -->
+    <div class="img-modal" id="imgModal" onclick="closeModal(event)">
+        <span class="close-btn" onclick="closeModal(event)">&times;</span>
+        <img id="modalImg" src="" alt="Zoomed image">
+    </div>
+
+    <script>
+        /* ============================================================
+           DATA — Remarks hata diya, baaki same
+           ============================================================ */
+        const paymentsData = [
+            {
+                id: 'p1',
+                date: '07-11-2025',
+                txnImage: 'https://res.cloudinary.com/djnwoi3hk/image/upload/v1793255459/WhatsApp_Image_2026-10-29_at_11.55.29_AM_2_if0ajf.jpg',
+                txnNumber: 'T2511072020026623157462',
+                utrId: '955501900890',
+                billImage: 'https://res.cloudinary.com/djnwoi3hk/image/upload/v1793255460/WhatsApp_Image_2026-10-29_at_11.40.36_AM_o13iod.jpg',
+                paidAgainst: 'OU FEE 1st Year'
+            },
+            {
+                id: 'p2',
+                date: '10-01-2026',
+                txnImage: 'https://res.cloudinary.com/djnwoi3hk/image/upload/v1793255460/WhatsApp_Image_2026-10-29_at_11.55.29_AM_1_svltab.jpg',
+                txnNumber: 'T2601101629455893294457',
+                utrId: '338101780617',
+                billImage: 'https://via.placeholder.com/60/3a7ca5/ffffff?text=BILL',
+                paidAgainst: 'OU FEE 1st year(jan 20)'
+            },
+            {
+                id: 'p3',
+                date: '04-07-2026',
+                txnImage: 'https://res.cloudinary.com/djnwoi3hk/image/upload/v1793255459/WhatsApp_Image_2026-10-29_at_11.55.29_AM_gqc07r.jpg',
+                txnNumber: 'T2607041051137901357381',
+                utrId: '199225490109',
+                billImage: 'https://res.cloudinary.com/djnwoi3hk/image/upload/v1793255459/WhatsApp_Image_2026-10-29_at_12.00.03_PM_gpax2b.jpg',
+                paidAgainst: 'Exam Fee'
+            },
+            {
+                id: 'p4',
+                date: '26-08-2026',
+                txnImage: 'https://res.cloudinary.com/djnwoi3hk/image/upload/v1793255460/WhatsApp_Image_2026-10-29_at_11.55.28_AM_1_gbytad.jpg',
+                txnNumber: 'T2608262204016254994701',
+                utrId: '823133083044',
+                billImage: 'https://res.cloudinary.com/djnwoi3hk/image/upload/v1793255459/WhatsApp_Image_2026-10-28_at_2.04.24_PM_hrnojn.jpg',
+                paidAgainst: 'OU Fee 2nd year'
+            },
+            {
+                id: 'p5',
+                date: '27-10-2026',
+                txnImage: 'https://res.cloudinary.com/djnwoi3hk/image/upload/v1793255460/WhatsApp_Image_2026-10-29_at_11.55.28_AM_ibjxrw.jpg',
+                txnNumber: 'T2610272048137906512580',
+                utrId: '384817075530',
+                billImage: 'https://res.cloudinary.com/djnwoi3hk/image/upload/v1793255459/WhatsApp_Image_2026-10-28_at_10.35.02_AM_gyp4v2.jpg',
+                paidAgainst: 'Mini Project and 6k extra'
+            }
+        ];
+
+        /* ============================================================
+           LOCALSTORAGE — sirf paidAgainst persist hoga
+           ============================================================ */
+        const STORAGE_KEY = 'payment_edits_v2';
+
+        function loadEdits() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (!saved) return;
+                const edits = JSON.parse(saved);
+                paymentsData.forEach(p => {
+                    if (edits[p.id] && edits[p.id].paidAgainst !== undefined) {
+                        p.paidAgainst = edits[p.id].paidAgainst;
+                    }
+                });
+            } catch (e) { console.warn('Edit load fail', e); }
+        }
+
+        function saveEdit(id, field, value) {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                const edits = saved ? JSON.parse(saved) : {};
+                if (!edits[id]) edits[id] = {};
+                edits[id][field] = value;
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(edits));
+            } catch (e) { console.warn('Edit save fail', e); }
+        }
+
+        /* ============================================================
+           EDITABLE FIELD HANDLER
+           ============================================================ */
+        function attachEditableHandler(el, id, field) {
+            el.addEventListener('blur', () => {
+                const newVal = el.innerText.trim();
+                const payment = paymentsData.find(p => p.id === id);
+                if (payment && payment[field] !== newVal) {
+                    payment[field] = newVal;
+                    saveEdit(id, field, newVal);
+                    el.classList.add('saved');
+                    setTimeout(() => el.classList.remove('saved'), 1200);
+                }
+            });
+            el.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    el.blur();
+                }
+            });
+        }
+
+        function createEditable(text, id, field, extraClass = '') {
+            const span = document.createElement('span');
+            span.className = 'editable ' + extraClass;
+            span.contentEditable = 'true';
+            span.innerText = text || 'Click to add...';
+            span.title = 'Click to edit';
+            attachEditableHandler(span, id, field);
+            return span;
+        }
+
+        /* ============================================================
+           IMAGE MODAL HANDLERS
+           ============================================================ */
+        function openModal(src) {
+            const modal = document.getElementById('imgModal');
+            const img = document.getElementById('modalImg');
+            img.src = src;
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal(e) {
+            // Sirf backdrop ya close button par close ho
+            if (e && e.target && e.target.tagName === 'IMG' && e.target.id === 'modalImg') {
+                return; // Image khud par click karne se band na ho
+            }
+            const modal = document.getElementById('imgModal');
+            modal.classList.remove('active');
+            document.getElementById('modalImg').src = '';
+            document.body.style.overflow = '';
+        }
+
+        // ESC key se modal band
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modal = document.getElementById('imgModal');
+                if (modal.classList.contains('active')) {
+                    modal.classList.remove('active');
+                    document.getElementById('modalImg').src = '';
+                    document.body.style.overflow = '';
+                }
+            }
+        });
+
+        /* ============================================================
+           RENDER TABLE VIEW — Remarks column hata diya
+           ============================================================ */
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = '';
+
+            paymentsData.forEach(p => {
+                const tr = document.createElement('tr');
+
+                // 1. Date
+                const tdDate = document.createElement('td');
+                tdDate.textContent = p.date;
+                tr.appendChild(tdDate);
+
+                // 2. Transaction image — click to zoom
+                const tdTxnImg = document.createElement('td');
+                tdTxnImg.className = 'img-cell';
+                const txnImg = document.createElement('img');
+                txnImg.src = p.txnImage;
+                txnImg.alt = 'Transaction image';
+                txnImg.onerror = function() { this.src = 'https://via.placeholder.com/60/cccccc/ffffff?text=N/A'; };
+                txnImg.addEventListener('click', () => openModal(p.txnImage));
+                tdTxnImg.appendChild(txnImg);
+                tr.appendChild(tdTxnImg);
+
+                // 3. Transaction number
+                const tdTxnNum = document.createElement('td');
+                const txnSpan = document.createElement('span');
+                txnSpan.className = 'trans-num';
+                txnSpan.textContent = p.txnNumber;
+                tdTxnNum.appendChild(txnSpan);
+                tr.appendChild(tdTxnNum);
+
+                // 4. UTR ID
+                const tdUtr = document.createElement('td');
+                const utrSpan = document.createElement('span');
+                utrSpan.className = 'utr-num';
+                utrSpan.textContent = p.utrId;
+                tdUtr.appendChild(utrSpan);
+                tr.appendChild(tdUtr);
+
+                // 5. Bill image — click to zoom
+                const tdbillImg = document.createElement('td');
+                tdbillImg.className = 'img-cell';
+                const billImg = document.createElement('img');
+                billImg.src = p.billImage;
+                billImg.alt = 'Bill image';
+                billImg.onerror = function() { this.src = 'https://via.placeholder.com/60/cccccc/ffffff?text=N/A'; };
+                billImg.addEventListener('click', () => openModal(p.billImage));
+                tdbillImg.appendChild(billImg);
+                tr.appendChild(tdbillImg);
+
+                // 6. Paid against (EDITABLE)
+                const tdPaid = document.createElement('td');
+                tdPaid.appendChild(createEditable(p.paidAgainst, p.id, 'paidAgainst'));
+                tr.appendChild(tdPaid);
+
+                tbody.appendChild(tr);
+            });
+        }
+
+        /* ============================================================
+           RENDER FOLDER VIEW — Remarks hata diya
+           ============================================================ */
+        function renderFolders() {
+            const list = document.getElementById('folderList');
+            list.innerHTML = '';
+
+            paymentsData.forEach(p => {
+                const item = document.createElement('div');
+                item.className = 'folder-item';
+
+                // Header
+                const header = document.createElement('div');
+                header.className = 'folder-header';
+                header.innerHTML = `
+                    <span class="folder-icon">📁</span>
+                    <span class="folder-title">${p.paidAgainst || 'Untitled'}</span>
+                    <span class="folder-meta">${p.date}</span>
+                    <span class="folder-arrow">▼</span>
+                `;
+
+                // Body
+                const body = document.createElement('div');
+                body.className = 'folder-body';
+
+                const details = document.createElement('div');
+                details.className = 'folder-details';
+
+                // Date
+                details.appendChild(createDetailGroup('Date of Payment', p.date));
+
+                // Txn Number
+                const txnGroup = document.createElement('div');
+                txnGroup.className = 'detail-group';
+                txnGroup.innerHTML = `<span class="detail-label">Transaction Number</span>`;
+                const txnSpan = document.createElement('span');
+                txnSpan.className = 'trans-num detail-value';
+                txnSpan.textContent = p.txnNumber;
+                txnGroup.appendChild(txnSpan);
+                details.appendChild(txnGroup);
+
+                // UTR ID
+                const utrGroup = document.createElement('div');
+                utrGroup.className = 'detail-group';
+                utrGroup.innerHTML = `<span class="detail-label">UTR ID</span>`;
+                const utrSpan = document.createElement('span');
+                utrSpan.className = 'utr-num detail-value';
+                utrSpan.textContent = p.utrId;
+                utrGroup.appendChild(utrSpan);
+                details.appendChild(utrGroup);
+
+                // Paid Against (EDITABLE)
+                const paidGroup = document.createElement('div');
+                paidGroup.className = 'detail-group';
+                paidGroup.innerHTML = `<span class="detail-label">Paid Against</span>`;
+                paidGroup.appendChild(createEditable(p.paidAgainst, p.id, 'paidAgainst'));
+                details.appendChild(paidGroup);
+
+                // Images
+                const imgBox = document.createElement('div');
+                imgBox.className = 'detail-images';
+
+                imgBox.appendChild(createImageBox(p.txnImage, 'Transaction Image'));
+                imgBox.appendChild(createImageBox(p.billImage, 'Bill Image'));
+
+                details.appendChild(imgBox);
+                body.appendChild(details);
+
+                item.appendChild(header);
+                item.appendChild(body);
+
+                // Toggle open/close
+                header.addEventListener('click', () => {
+                    item.classList.toggle('open');
+                });
+
+                list.appendChild(item);
+            });
+        }
+
+        function createDetailGroup(label, value) {
+            const g = document.createElement('div');
+            g.className = 'detail-group';
+            g.innerHTML = `<span class="detail-label">${label}</span><span class="detail-value">${value}</span>`;
+            return g;
+        }
+
+        function createImageBox(src, label) {
+            const box = document.createElement('div');
+            box.className = 'detail-img-box';
+            const img = document.createElement('img');
+            img.src = src;
+            img.alt = label;
+            img.onerror = function() { this.src = 'https://via.placeholder.com/80/cccccc/ffffff?text=N/A'; };
+            img.addEventListener('click', () => openModal(src));
+            const lbl = document.createElement('span');
+            lbl.className = 'detail-img-label';
+            lbl.textContent = label;
+            box.appendChild(img);
+            box.appendChild(lbl);
+            return box;
+        }
+
+        /* ============================================================
+           VIEW SWITCH
+           ============================================================ */
+        function switchView(view) {
+            document.getElementById('viewTable').classList.toggle('active', view === 'table');
+            document.getElementById('viewFolder').classList.toggle('active', view === 'folder');
+            document.getElementById('btnTable').classList.toggle('active', view === 'table');
+            document.getElementById('btnFolder').classList.toggle('active', view === 'folder');
+        }
+
+        /* ============================================================
+           INIT
+           ============================================================ */
+        loadEdits();
+        renderTable();
+        renderFolders();
+    </script>
+</body>
+</html>
